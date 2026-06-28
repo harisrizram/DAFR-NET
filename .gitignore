@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data (do not commit raw data)
+data/raw/
+data/processed/
+
+# Model weights (too large for git)
+models/checkpoints/
+models/exports/*.pth
+models/exports/*.ckpt
+
+# Results
+results/inpainting/
+results/sr/
+
+# Logs
+logs/
+wandb/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
