@@ -3,7 +3,7 @@
 
 model:
   structure_branch:
-    backbone: swin_base_patch4_window7_224
+    backbone: swin_tiny_patch4_window7_224
     pretrained: true
     out_channels: 256
   frequency_branch:
@@ -21,8 +21,8 @@ model:
     skip_connections: true
 
 data:
-  root: data/processed
-  mask_dir: data/masks
+  root: /kaggle/input/dafrnet-muraldh/processed
+  mask_dir: /kaggle/input/dafrnet-muraldh/masks
   target_dir: null                        # no paired clean reference in MuralDH; self-supervised
   image_size: 256
   train_split: 0.8
@@ -42,7 +42,7 @@ training:
 loss:
   reconstruction: l1                     # pixel-level
   perceptual: vgg16                      # perceptual loss weight
-  perceptual_weight: 0.1
+  perceptual_weight: 0                   # disabled for Kaggle Tiny fallback (fp32 VGG16 pass too slow)
   ssim_weight: 0.2
   total: reconstruction + perceptual + ssim
 
@@ -53,5 +53,6 @@ logging:
   save_top_k: 5
 
 output:
-  checkpoint_dir: models/checkpoints/encoder
-  results_dir: results/inpainting
+  checkpoint_dir: /kaggle/working/checkpoints/encoder
+  results_dir: /kaggle/working/results/inpainting
+  export_dir: /kaggle/working/exports

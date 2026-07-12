@@ -338,6 +338,7 @@ def main(config_path: str):
             filename="dafrnet-{epoch:03d}-psnr{val/psnr:.2f}",
             monitor="val/psnr", mode="max",
             save_top_k=lcfg["save_top_k"],
+            save_last=True,
         ),
         EarlyStopping(monitor="val/psnr", patience=20, mode="max"),
         LearningRateMonitor(logging_interval="epoch"),
@@ -351,7 +352,8 @@ def main(config_path: str):
     trainer = pl.Trainer(
         max_epochs=tcfg["epochs"],
         accelerator="auto",
-        devices=1,
+        devices=2,
+        strategy="ddp_notebook",
         precision=tcfg.get("precision", "16-mixed"),
         gradient_clip_val=tcfg.get("gradient_clip", 1.0),
         callbacks=callbacks,

@@ -24,6 +24,15 @@ from model import DamageClassifier
 class MuralDamageDataset(Dataset):
     def __init__(self, label_csv: str, image_size: int = 256, augment: bool = True):
         self.df = pd.read_csv(label_csv)
+
+        # Labels were generated on Windows (backslash paths under data\processed\...).
+        # Normalize to the actual image directory next to this CSV (e.g. Kaggle's
+        # /kaggle/input/.../processed) regardless of the machine that wrote the CSV.
+        root = Path(label_csv).parent / "processed"
+        self.df["filename"] = self.df["filename"].apply(
+            lambda p: str(root / Path(p.replace("\\", "/")).name)
+        )
+
         aug_list = [T.Resize((image_size, image_size))]
         if augment:
             aug_list += [
