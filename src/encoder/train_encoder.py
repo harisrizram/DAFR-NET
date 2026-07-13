@@ -243,8 +243,12 @@ class DAFRNetModule(pl.LightningModule):
         losses = self._loss(pred, target, mask)
         m      = evaluate_batch(pred, target)
 
+        # Suffix loss-dict keys with "_loss" -- the loss dict's "ssim" entry is
+        # the SSIM *loss term*, distinct from val/ssim (the actual SSIM metric
+        # logged below); logging both under "val/ssim" is a duplicate self.log
+        # with different values, which Lightning raises on.
         for k, v in losses.items():
-            self.log(f"val/{k}", v, prog_bar=(k == "total"))
+            self.log(f"val/{k}_loss", v, prog_bar=(k == "total"))
         self.log("val/psnr", m["psnr"], prog_bar=True)
         self.log("val/ssim", m["ssim"], prog_bar=True)
 
