@@ -295,7 +295,7 @@ class DAFRNetModule(pl.LightningModule):
 # Entry point
 # ---------------------------------------------------------------------------
 
-def main(config_path: str):
+def main(config_path: str, resume: bool = False):
     with open(config_path) as f:
         config = yaml.safe_load(f)
 
@@ -361,7 +361,12 @@ def main(config_path: str):
         log_every_n_steps=lcfg.get("log_every_n_steps", 10),
     )
 
-    trainer.fit(model, train_loader, val_loader)
+    last_ckpt = Path(ocfg["checkpoint_dir"]) / "last.ckpt"
+    ckpt_path = str(last_ckpt) if resume and last_ckpt.exists() else None
+    if resume and ckpt_path is None:
+        print(f"--resume passed but no checkpoint found at {last_ckpt}; starting fresh.")
+
+    trainer.fit(model, train_loader, val_loader, ckpt_path=ckpt_path)
 
     best = callbacks[0].best_model_path
     print(f"Best checkpoint: {best}")
@@ -377,5 +382,7 @@ if __name__ == "__main__":
         description="Train DAFR-Net dual-branch encoder + inpainting head"
     )
     parser.add_argument("--config", default="configs/encoder.yaml")
+    parser.add_argument("--resume", action="store_true",
+                         help="Resume from checkpoint_dir/last.ckpt if it exists")
     args = parser.parse_args()
-    main(args.config)
+    main(args.config, resume=args.resume)

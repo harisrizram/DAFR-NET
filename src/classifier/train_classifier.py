@@ -56,7 +56,7 @@ class MuralDamageDataset(Dataset):
         return x, y
 
 
-def main(config_path: str):
+def main(config_path: str, resume: bool = False):
     with open(config_path) as f:
         config = yaml.safe_load(f)
 
@@ -85,6 +85,7 @@ def main(config_path: str):
         filename="classifier-{epoch:02d}-{val/acc:.3f}",
         monitor="val/acc", mode="max",
         save_top_k=config["logging"]["save_top_k"],
+        save_last=True,
     )
     early_stop = EarlyStopping(monitor="val/acc", patience=10, mode="max")
 
@@ -105,12 +106,19 @@ def main(config_path: str):
         log_every_n_steps=config["logging"]["log_every_n_steps"],
     )
 
-    trainer.fit(model, train_loader, val_loader)
+    last_ckpt = Path(config["output"]["checkpoint_dir"]) / "last.ckpt"
+    ckpt_path = str(last_ckpt) if resume and last_ckpt.exists() else None
+    if resume and ckpt_path is None:
+        print(f"--resume passed but no checkpoint found at {last_ckpt}; starting fresh.")
+
+    trainer.fit(model, train_loader, val_loader, ckpt_path=ckpt_path)
     print(f"Best model: {ckpt_cb.best_model_path}")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="configs/classifier.yaml")
+    parser.add_argument("--resume", action="store_true",
+                         help="Resume from checkpoint_dir/last.ckpt if it exists")
     args = parser.parse_args()
-    main(args.config)
+    main(args.config, resume=args.resume)
