@@ -17,10 +17,15 @@ class StructureBranch(nn.Module):
     Captures edges, outlines, and spatial patterns of the mural.
     """
     def __init__(self, backbone: str = "swin_base_patch4_window7_224",
-                 pretrained: bool = True, out_channels: int = 256):
+                 pretrained: bool = True, out_channels: int = 256,
+                 img_size: int = 224):
         super().__init__()
+        # timm's Swin PatchEmbed hard-asserts input H/W against the img_size
+        # it was built with (default 224, baked into the backbone name) --
+        # must be overridden here to match the pipeline's actual resolution.
         self.encoder = timm.create_model(
-            backbone, pretrained=pretrained, features_only=True
+            backbone, pretrained=pretrained, features_only=True,
+            img_size=img_size,
         )
         # Project last feature map to out_channels
         in_ch = self.encoder.feature_info[-1]["num_chs"]
@@ -131,11 +136,13 @@ class DualBranchEncoder(nn.Module):
         struct_cfg = config["model"]["structure_branch"]
         freq_cfg   = config["model"]["frequency_branch"]
         fusion_cfg = config["model"]["fusion"]
+        image_size = config["data"]["image_size"]
 
         self.structure_branch = StructureBranch(
             backbone=struct_cfg["backbone"],
             pretrained=struct_cfg["pretrained"],
             out_channels=struct_cfg["out_channels"],
+            img_size=image_size,
         )
         self.frequency_branch = FrequencyBranch(
             out_channels=freq_cfg["out_channels"],
