@@ -370,7 +370,13 @@ def main(config_path: str, resume: bool = False):
         max_epochs=tcfg["epochs"],
         accelerator="auto",
         devices=2,
-        strategy=DDPStrategy(start_method="fork", timeout=timedelta(minutes=3)),
+        # No start_method override: this script runs as `!python
+        # train_encoder.py`, a real OS subprocess, not a live notebook kernel
+        # cell -- Lightning's own non-interactive detection should pick its
+        # subprocess-relaunch DDP launcher rather than the fork-based one
+        # "ddp_notebook"/start_method="fork" forces, which was the likely
+        # source of the last two silent hangs (fork after CUDA touch).
+        strategy=DDPStrategy(timeout=timedelta(minutes=3)),
         precision=tcfg.get("precision", "16-mixed"),
         gradient_clip_val=tcfg.get("gradient_clip", 1.0),
         callbacks=callbacks,
