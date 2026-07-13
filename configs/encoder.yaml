@@ -21,8 +21,8 @@ model:
     skip_connections: true
 
 data:
-  root: /kaggle/input/dafrnet-muraldh/processed
-  mask_dir: /kaggle/input/dafrnet-muraldh/masks
+  root: /kaggle/input/datasets/harizram/dafrnet-muraldh/processed
+  mask_dir: /kaggle/input/datasets/harizram/dafrnet-muraldh/masks
   target_dir: null                        # no paired clean reference in MuralDH; self-supervised
   image_size: 256
   train_split: 0.8
