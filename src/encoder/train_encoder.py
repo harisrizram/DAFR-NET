@@ -7,10 +7,19 @@ Usage:
 """
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+# Kaggle's virtualized multi-GPU nodes generally lack NVLink/P2P access between
+# GPUs, so NCCL's default P2P/InfiniBand transport hangs indefinitely waiting
+# for a handshake that can't complete. Force the plain-TCP fallback path before
+# any distributed process group is created (ddp_notebook forks from this
+# process, so children inherit these env vars).
+os.environ.setdefault("NCCL_P2P_DISABLE", "1")
+os.environ.setdefault("NCCL_IB_DISABLE", "1")
 
 import yaml
 import torch
