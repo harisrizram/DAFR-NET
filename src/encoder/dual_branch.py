@@ -28,9 +28,9 @@ class StructureBranch(nn.Module):
             img_size=img_size,
         )
         # Project last feature map to out_channels
-        in_ch = self.encoder.feature_info[-1]["num_chs"]
+        self._in_ch = self.encoder.feature_info[-1]["num_chs"]
         self.proj = nn.Sequential(
-            nn.Conv2d(in_ch, out_channels, kernel_size=1),
+            nn.Conv2d(self._in_ch, out_channels, kernel_size=1),
             nn.BatchNorm2d(out_channels),
             nn.GELU(),
         )
@@ -38,10 +38,14 @@ class StructureBranch(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         features = self.encoder(x)
         feat = features[-1]                   # take deepest feature map
-        if feat.dim() == 3:                   # Swin returns (B, HW, C)
+        if feat.dim() == 3:                   # tokens: (B, HW, C)
             B, HW, C = feat.shape
             H = W = int(HW ** 0.5)
             feat = feat.permute(0, 2, 1).reshape(B, C, H, W)
+        elif feat.dim() == 4 and feat.shape[1] != self._in_ch:
+            # timm's Swin returns channels-last (B, H, W, C) from features_only;
+            # nn.Conv2d needs channels-first (B, C, H, W).
+            feat = feat.permute(0, 3, 1, 2)
         return self.proj(feat)
 
 
