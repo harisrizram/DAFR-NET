@@ -18,8 +18,8 @@ data:
 training:
   epochs: 50
   batch_size: 32
-  lr: 1e-4
-  weight_decay: 1e-4
+  lr: 1.0e-4
+  weight_decay: 1.0e-4
   scheduler: cosine
   warmup_epochs: 3
   loss: cross_entropy

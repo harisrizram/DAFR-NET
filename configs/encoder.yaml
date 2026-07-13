@@ -32,8 +32,8 @@ data:
 training:
   epochs: 150
   batch_size: 8                          # reduce to 4 if OOM on T4
-  lr: 2e-4
-  weight_decay: 1e-4
+  lr: 2.0e-4
+  weight_decay: 1.0e-4
   scheduler: cosine_with_restarts
   warmup_epochs: 5
   gradient_clip: 1.0
