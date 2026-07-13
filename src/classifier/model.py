@@ -77,10 +77,14 @@ class DamageClassifier(pl.LightningModule):
         return [optimizer], [scheduler]
 
     def on_train_epoch_start(self):
-        # Freeze backbone for first N epochs, then unfreeze
+        # Freeze backbone for first N epochs, then unfreeze.
+        # Use timm's get_classifier() rather than name-matching "head"/"classifier" —
+        # e.g. ResNet's final layer is named "fc", which those substrings miss,
+        # silently freezing the whole model (no params left with requires_grad=True).
         if self.current_epoch == 0 and self._freeze_epochs > 0:
-            for name, param in self.backbone.named_parameters():
-                if "head" not in name and "classifier" not in name:
+            classifier_param_ids = {id(p) for p in self.backbone.get_classifier().parameters()}
+            for param in self.backbone.parameters():
+                if id(param) not in classifier_param_ids:
                     param.requires_grad = False
         elif self.current_epoch == self._freeze_epochs:
             for param in self.backbone.parameters():
