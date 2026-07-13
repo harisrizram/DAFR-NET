@@ -20,6 +20,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 # process, so children inherit these env vars).
 os.environ.setdefault("NCCL_P2P_DISABLE", "1")
 os.environ.setdefault("NCCL_IB_DISABLE", "1")
+# Verbose NCCL logging so a hung collective op (e.g. the initial DDP weight
+# broadcast) shows exactly which stage/transport it's blocked in, instead of
+# silent 0%-GPU-utilization with no diagnostic output.
+os.environ.setdefault("NCCL_DEBUG", "INFO")
+os.environ.setdefault("NCCL_DEBUG_SUBSYS", "INIT,NET")
+
+from datetime import timedelta
 
 import yaml
 import torch
@@ -28,6 +35,7 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor
 from pytorch_lightning.loggers import WandbLogger
+from pytorch_lightning.strategies import DDPStrategy
 from torch.utils.data import DataLoader, Dataset, random_split
 from PIL import Image
 import torchvision.transforms as T
@@ -362,7 +370,7 @@ def main(config_path: str, resume: bool = False):
         max_epochs=tcfg["epochs"],
         accelerator="auto",
         devices=2,
-        strategy="ddp_notebook",
+        strategy=DDPStrategy(start_method="fork", timeout=timedelta(minutes=3)),
         precision=tcfg.get("precision", "16-mixed"),
         gradient_clip_val=tcfg.get("gradient_clip", 1.0),
         callbacks=callbacks,
