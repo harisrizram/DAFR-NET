@@ -7,6 +7,7 @@ Usage:
 """
 
 import argparse
+import shutil
 import yaml
 import torch
 import pytorch_lightning as pl
@@ -112,7 +113,15 @@ def main(config_path: str, resume: bool = False):
         print(f"--resume passed but no checkpoint found at {last_ckpt}; starting fresh.")
 
     trainer.fit(model, train_loader, val_loader, ckpt_path=ckpt_path)
-    print(f"Best model: {ckpt_cb.best_model_path}")
+    best = ckpt_cb.best_model_path
+    print(f"Best model: {best}")
+
+    # Export a Lightning checkpoint under a fixed name for API serving —
+    # api/main.py loads DamageClassifier.load_from_checkpoint("models/exports/classifier.ckpt", ...)
+    export_dir = Path(config["output"].get("export_dir", "models/exports"))
+    export_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy(best, export_dir / "classifier.ckpt")
+    print(f"Exported classifier checkpoint → {export_dir / 'classifier.ckpt'}")
 
 
 if __name__ == "__main__":

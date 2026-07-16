@@ -109,8 +109,8 @@ async def restore_mural(file: UploadFile = File(...)):
         tensor = TRANSFORM(img).unsqueeze(0).to(DEVICE)
 
         with torch.no_grad():
-            # Step 1: classify damage
-            damage_type = classifier.predict_damage_type(tensor)
+            # Step 1: classify damage (predict_damage_type adds its own batch dim)
+            damage_type = classifier.predict_damage_type(tensor.squeeze(0))
 
             # Step 2: encode
             latent = encoder(tensor)
@@ -150,6 +150,6 @@ async def classify_damage(file: UploadFile = File(...)):
     tensor = TRANSFORM(img).unsqueeze(0).to(DEVICE)
 
     with torch.no_grad():
-        damage_type = classifier.predict_damage_type(tensor)
+        damage_type = classifier.predict_damage_type(tensor.squeeze(0))
 
     return {"damage_type": damage_type, "model": "DAFR-Net Classifier v1"}

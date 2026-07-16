@@ -2,7 +2,7 @@
 
 **Author:** K Anirudh | S Harish Siddharth | M.Tech AI & DS | SASTRA University
 **Project type:** SASTRA Summer Research Project 2024–25
-**Status:** Phase 1 — core pipeline implemented, dataset ingested, training-ready
+**Status:** Phase 1 — **COMPLETE**. Both models trained end-to-end on MuralDH and served live via a FastAPI demo (classifier val/acc = 74.0%, restoration val/PSNR = 24.36 dB). Phase 2 (ControlNet diffusion decoder + SR head) not started.
 
 > **For anyone continuing or editing this project:**
 > Read [`docs/SESSION_HANDOFF.md`](docs/SESSION_HANDOFF.md) before making changes.
@@ -48,10 +48,12 @@ A deep learning pipeline that classifies mural damage type (crack, fade, missing
 | Heuristic mask generation                          | **Done**        | `src/utils/label_damage.py`                       |
 | Synthetic data generator (fallback)                | **Done**        | `src/utils/generate_synthetic_data.py`            |
 | Unit tests (5 files)                               | **Done**        | `tests/`                                          |
-| FastAPI demo server                                | **Done**        | `api/main.py`                                     |
-| Classifier training                                | **Not started** | Awaiting dataset ingestion                        |
-| Encoder + decoder training                         | **Not started** | Awaiting dataset ingestion                        |
-| Baseline comparisons                               | **Not started** | —                                                 |
+| FastAPI demo server                                | **Done — smoke tested** | `api/main.py`                             |
+| Classifier training                                | **Done** — val/acc 0.740 @ epoch 10/50 (early-stopped) | `models/exports/classifier.ckpt` |
+| Encoder + decoder training                         | **Done** — val/PSNR 24.36 dB @ epoch 149/150 (full run) | `models/exports/encoder.pth`, `decoder.pth` |
+| Baseline comparisons                               | **Partial** — PSNR compared to MuralDH paper baseline (>28 dB); SSIM/LPIPS not yet computed | —          |
+
+Both models were trained on Kaggle's free 2×T4 GPU tier. Memory constraints forced two fallbacks from the original design: the structure branch uses **Swin-Tiny** instead of Swin-Base, and the **VGG16 perceptual loss is disabled** (`perceptual_weight: 0`). This is why validation PSNR (24.36 dB) sits below the MuralDH baseline (>28 dB) — see [`docs/SUMMER_PROJECT_REPORT.md`](docs/SUMMER_PROJECT_REPORT.md) for the full writeup and [`docs/PPT_CONTENT.md`](docs/PPT_CONTENT.md) / [`docs/DAFR-Net_Summer_Project_PPT.pptx`](docs/DAFR-Net_Summer_Project_PPT.pptx) for presentation material.
 
 ### Phase 2 — Thesis completion
 
@@ -160,22 +162,32 @@ Uses `swin_tiny` + `pretrained=False` — passes without GPU or dataset.
 python src/classifier/train_classifier.py --config configs/classifier.yaml
 ```
 
+**Already done** — best checkpoint (val/acc 0.740, epoch 10/50) is exported to `models/exports/classifier.ckpt`. Re-run only to retrain.
+
 ### 5. Train encoder + inpainting head
 
 ```bash
 python src/encoder/train_encoder.py --config configs/encoder.yaml
 ```
 
-### 6. Run API demo
+**Already done** — full 150-epoch run (val/PSNR 24.36 dB, epoch 149) is exported to `models/exports/encoder.pth` and `models/exports/decoder.pth`. Re-run only to retrain.
+
+> `configs/classifier.yaml` and `configs/encoder.yaml` still have their `data`/`output` paths set to Kaggle's `/kaggle/input/...` and `/kaggle/working/...` (from the training run) — this does **not** block the API demo below, since `api/main.py` only reads the `model:` section. Only revert these paths if you intend to resume/retrain locally.
+
+### 6. Run the API demo
 
 ```bash
 uvicorn api.main:app --reload --port 8000
 # Open: http://localhost:8000/docs
 ```
 
+See **[Live demo guide for the panel](#live-demo-guide-for-the-panel)** below for the exact walkthrough.
+
 ---
 
 ## Colab / Kaggle setup (T4 GPU)
+
+> This is the exact setup already used to complete Phase 1 training (see [`docs/SUMMER_PROJECT_REPORT.md`](docs/SUMMER_PROJECT_REPORT.md) for the full run history). Kept here for reference if you resume training (e.g. a Swin-Base follow-up run) — not required for the API demo.
 
 ```python
 # 1. Mount Drive (Colab)
@@ -207,11 +219,14 @@ with open("configs/encoder.yaml", "w") as f:
 
 ## Evaluation targets
 
-| Metric    | Baseline (MuralDH paper) | DAFR-Net Phase 1 target |
-| --------- | ------------------------ | ----------------------- |
-| PSNR (dB) | > 28                     | > 30                    |
-| SSIM      | > 0.85                   | > 0.87                  |
-| LPIPS     | —                        | < 0.15                  |
+| Metric        | Baseline (MuralDH paper) | DAFR-Net Phase 1 target | **Achieved (2026-07-14)** |
+| ------------- | ------------------------ | ------------------------ | -------------------------- |
+| Classifier acc | —                        | —                         | **74.0%** (val, epoch 10)  |
+| PSNR (dB)     | > 28                     | > 30                      | **24.36** (val, epoch 149) |
+| SSIM          | > 0.85                   | > 0.87                    | Not yet tracked             |
+| LPIPS         | —                        | < 0.15                    | Not yet tracked             |
+
+The PSNR gap to baseline is attributed to the Swin-Tiny/no-perceptual-loss fallback required by Kaggle's free-tier GPU memory budget — see [`docs/SUMMER_PROJECT_REPORT.md`](docs/SUMMER_PROJECT_REPORT.md) §7 for details and the planned Swin-Base follow-up run.
 
 ---
 
@@ -282,13 +297,82 @@ DAFR-Net/
 
 ---
 
+## Live demo guide for the panel
+
+Everything needed is already trained and sitting in `models/exports/` — no training or internet access required at demo time.
+
+### A. One-time pre-demo check (do this before you walk into the room)
+
+```bash
+# 1. Make sure the exported weights exist (should already be true)
+ls models/exports/
+#   -> classifier.ckpt  encoder.pth  decoder.pth
+
+# 2. Install deps if this is a fresh machine
+pip install -r requirements.txt
+
+# 3. Start the server and confirm all three models load
+uvicorn api.main:app --port 8000
+# Watch the console for: [DAFR-Net] Models loaded on cuda   (or "cpu" if no GPU)
+```
+
+If it prints `Checkpoints not found — run training first.`, you're either in the wrong directory or `models/exports/` is missing — check paths before the demo, not during it.
+
+### B. During the demo — three ways to show it live
+
+**1. Swagger UI (easiest, no terminal typing in front of the panel)**
+
+- Open `http://localhost:8000/docs` in a browser.
+- Expand `POST /classify` → *Try it out* → upload a damaged mural image (anything from `MuralDH/Mural_seg/test/` works well) → *Execute*.
+  → Returns `{"damage_type": "crack" | "fade" | "missing", ...}` — good for explaining Stage 1.
+- Expand `POST /restore` → *Try it out* → upload the same image → *Execute*.
+  → Returns the restored PNG directly in the browser, plus an `X-Damage-Type` response header showing what the classifier detected before restoration ran.
+
+**2. curl (if the panel wants to see the raw API contract)**
+
+```bash
+# Health check — confirms all 3 models loaded
+curl http://localhost:8000/health
+
+# Classify damage type
+curl -X POST http://localhost:8000/classify \
+  -F "file=@MuralDH/Mural_seg/test/<some_image>.jpg"
+
+# Restore an image, save the PNG output
+curl -X POST http://localhost:8000/restore \
+  -F "file=@MuralDH/Mural_seg/test/<some_image>.jpg" \
+  -o restored_output.png
+```
+
+**3. Before/after slide (prepared, no live risk)**
+
+If you don't want to risk a live network/GPU hiccup in front of the panel, pre-generate 2–3 before/after pairs beforehand using the curl command above, and drop them into `results/` — Slide 9 of `docs/DAFR-Net_Summer_Project_PPT.pptx` already has a placeholder image area sized for this.
+
+### C. Talking points while demoing
+
+- Point out the `X-Damage-Type` header on `/restore` — it proves the classifier's output is actually routed into the restoration stage, not just decorative (Novelty #1).
+- Mention the whole thing runs on a laptop CPU/single GPU at inference time even though training used 2×T4 GPUs — the trained artifacts are only ~530 MB total (`encoder.pth` 124 MB + `decoder.pth` 9 MB + `classifier.ckpt` 283 MB).
+- If asked about accuracy: be upfront — 74.0% classifier val accuracy and 24.36 dB PSNR, below the >28 dB MuralDH baseline, and explain why (Swin-Tiny + disabled perceptual loss, due to free-tier GPU memory limits) — this is covered in detail in `docs/SUMMER_PROJECT_REPORT.md` §7 (Merits and Demerits).
+
+### D. If something breaks right before the demo
+
+| Symptom | Likely cause | Fix |
+| --- | --- | --- |
+| `Checkpoints not found` on startup | Wrong working directory, or `models/exports/` missing/moved | `cd` to repo root; verify the 3 files listed in step A exist |
+| `ModuleNotFoundError` (timm, einops, torchmetrics, pytorch-lightning) | Fresh machine, deps not installed | `pip install -r requirements.txt` |
+| `/restore` 500 error | Corrupt/non-image upload, or CUDA OOM on a small GPU | Retry with a clean JPEG/PNG; add `DEVICE = "cpu"` override in `api/main.py` if the demo machine's GPU is too small |
+| Server slow to start | Loading `classifier.ckpt` (283 MB Lightning checkpoint) on CPU | Normal — takes a few seconds; start the server 1–2 minutes before the panel arrives |
+
+---
+
 ## Supervisor talking points
 
 1. Three clearly separated novelties, each ablatable independently
 2. Built directly on MuralDH benchmark — results are directly comparable to published numbers
-3. Phase 1 deliverable (working inpainting + API demo) is training-ready now that dataset is ingested
-4. Phase 2 (ControlNet diffusion + SR + paper) is thesis completion; SR data (`Mural_SR/`) is already available
-5. Stack matches existing PyTorch/FastAPI experience
+3. Phase 1 deliverable is **done**: both models trained end-to-end (classifier val/acc 0.740, restoration val/PSNR 24.36 dB) and served live through a working FastAPI demo
+4. Current PSNR trails the MuralDH baseline (>28 dB) because of free-tier GPU constraints (Swin-Tiny fallback, perceptual loss disabled) — a full Swin-Base run is the natural next step to close that gap
+5. Phase 2 (ControlNet diffusion + SR + paper) is thesis completion; SR data (`Mural_SR/`) is already available
+6. Stack matches existing PyTorch/FastAPI experience
 
 ---
 

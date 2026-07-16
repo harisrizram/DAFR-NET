@@ -12,6 +12,9 @@ venv/
 env/
 .env
 
+# API credentials
+kaggle.json
+
 # Jupyter
 .ipynb_checkpoints/
 
@@ -40,3 +43,8 @@ wandb/
 # OS
 .DS_Store
 Thumbs.db
+
+# Large local artifacts (not tracked in git)
+*.zip
+/data/
+/MuralDH/
