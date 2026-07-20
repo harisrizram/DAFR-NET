@@ -1,7 +1,6 @@
 # DAFR-Net: Damage-Aware Frequency-Guided Restoration Network for Ancient Murals
 
-**Author:** K Anirudh | S Harish Siddharth | M.Tech AI & DS | SASTRA University
-**Project type:** SASTRA Summer Research Project 2024–25
+**Author:** K Anirudh | S Harish Siddharth 
 **Status:** Phase 1 — **COMPLETE**. Both models trained end-to-end on MuralDH and served live via a FastAPI demo (classifier val/acc = 74.0%, restoration val/PSNR = 24.36 dB). Phase 2 (ControlNet diffusion decoder + SR head) not started.
 
 > **For anyone continuing or editing this project:**
